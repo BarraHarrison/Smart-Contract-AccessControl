@@ -205,7 +205,7 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         emit Withdraw(msg.sender, balance);
     }
 
-        // -------------------------
+    // -------------------------
     //   ETH Receive & Fallback
     // -------------------------
 
@@ -255,14 +255,5 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
             emit TipReceived(msg.sender, msg.value, "");
         }
     }
-
-
-
-
-
-    // Future features to implement:
-    // - withdraw() function
-    // - events: UserBlacklisted, UserFrozen, TipReceived, Withdraw
-    // - receive() and fallback() functions
 }
 
