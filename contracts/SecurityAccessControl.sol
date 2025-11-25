@@ -205,6 +205,58 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         emit Withdraw(msg.sender, balance);
     }
 
+        // -------------------------
+    //   ETH Receive & Fallback
+    // -------------------------
+
+    /**
+     * @notice Accept plain ETH transfers and record them as a tip with empty message.
+     */
+    receive()
+        external
+        payable
+        whenNotPaused
+        notBlacklisted(msg.sender)
+        notFrozen(msg.sender)
+    {
+        _tips.push(
+            Tip({
+                from: msg.sender,
+                amount: msg.value,
+                message: "",
+                timestamp: block.timestamp
+            })
+        );
+
+        emit TipReceived(msg.sender, msg.value, "");
+    }
+
+    /**
+     * @notice Fallback function in case of unknown calldata.
+     * @dev If ETH is sent, treat it as a tip with empty message.
+     */
+    fallback()
+        external
+        payable
+        whenNotPaused
+        notBlacklisted(msg.sender)
+        notFrozen(msg.sender)
+    {
+        if (msg.value > 0) {
+            _tips.push(
+                Tip({
+                    from: msg.sender,
+                    amount: msg.value,
+                    message: "",
+                    timestamp: block.timestamp
+                })
+            );
+
+            emit TipReceived(msg.sender, msg.value, "");
+        }
+    }
+
+
 
 
 
