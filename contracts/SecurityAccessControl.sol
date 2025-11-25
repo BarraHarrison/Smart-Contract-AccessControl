@@ -180,6 +180,32 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
     }
 
 
+    // -------------------------
+    //   Withdraw Logic
+    // -------------------------
+
+    /**
+     * @notice Withdraw the full contract balance to the caller.
+     * @dev Restricted to FUNDER_ROLE, protected against reentrancy.
+     */
+    function withdraw()
+        external
+        nonReentrant
+        whenNotPaused
+        onlyRole(FUNDER_ROLE)
+        notBlacklisted(msg.sender)
+        notFrozen(msg.sender)
+    {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "SecurityAccessControl: no funds to withdraw");
+
+        (bool success, ) = msg.sender.call{value: balance}("");
+        require(success, "SecurityAccessControl: withdraw failed");
+
+        emit Withdraw(msg.sender, balance);
+    }
+
+
 
 
     // Future features to implement:
