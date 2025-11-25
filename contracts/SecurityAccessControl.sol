@@ -121,6 +121,29 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         return _blacklisted[account];
     }
 
+    // -------------------------
+    //   Freeze Logic
+    // -------------------------
+
+    function freeze(address account) external onlyRole(FREEZER_ROLE) {
+        if (!_frozen[account]) {
+            _frozen[account] = true;
+            emit UserFrozen(account);
+        }
+    }
+
+    function unfreeze(address account) external onlyRole(FREEZER_ROLE) {
+        if (_frozen[account]) {
+            _frozen[account] = false;
+            emit UserUnfrozen(account);
+        }
+    }
+
+    function isFrozen(address account) external view returns (bool) {
+        return _frozen[account];
+    }
+
+
 
     // Future features to implement:
     // - blacklist mapping
