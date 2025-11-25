@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 
 contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
