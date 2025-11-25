@@ -51,6 +51,21 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
     event TipReceived(address indexed from, uint256 amount, string message);
     event Withdraw(address indexed to, uint256 amount);
 
+    // -------------------------
+    //   Modifiers
+    // -------------------------
+
+    modifier notBlacklisted(address account) {
+        require(!_blacklisted[account], "SecurityAccessControl: blacklisted");
+        _;
+    }
+
+    modifier notFrozen(address account) {
+        require(!_frozen[account], "SecurityAccessControl: frozen");
+        _;
+    }
+
+
 
     // -------------------------
     //   Constructor
