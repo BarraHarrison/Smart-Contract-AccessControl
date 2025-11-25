@@ -1,3 +1,5 @@
 node_modules/
 tsconfig.json
 hardhat.config.ts
+artifacts/
+cache/
