@@ -99,6 +99,29 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         _unpause();
     }
 
+    // -------------------------
+    //   Blacklisting Logic
+    // -------------------------
+
+    function blacklist(address account) external onlyRole(BLACKLISTER_ROLE) {
+        if (!_blacklisted[account]) {
+            _blacklisted[account] = true;
+            emit UserBlacklisted(account);
+        }
+    }
+
+    function removeFromBlacklist(address account) external onlyRole(BLACKLISTER_ROLE) {
+        if (_blacklisted[account]) {
+            _blacklisted[account] = false;
+            emit UserRemovedFromBlacklist(account);
+        }
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        return _blacklisted[account];
+    }
+
+
     // Future features to implement:
     // - blacklist mapping
     // - freeze mapping
