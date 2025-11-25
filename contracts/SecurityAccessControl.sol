@@ -143,13 +143,46 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         return _frozen[account];
     }
 
+    // -------------------------
+    //   Tips Logic
+    // -------------------------
+
+    /**
+     * @notice Send an ETH tip with an optional message.
+     */
+    function sendTip(string calldata message)
+        external
+        payable
+        whenNotPaused
+        notBlacklisted(msg.sender)
+        notFrozen(msg.sender)
+    {
+        require(msg.value > 0, "SecurityAccessControl: no ETH sent");
+
+        _tips.push(
+            Tip({
+                from: msg.sender,
+                amount: msg.value,
+                message: message,
+                timestamp: block.timestamp
+            })
+        );
+
+        emit TipReceived(msg.sender, msg.value, message);
+    }
+
+    /**
+     * @notice Return all tips stored in the contract.
+     * @dev For demo / small usage only. Avoid on very large arrays in prod.
+     */
+    function getAllTips() external view returns (Tip[] memory) {
+        return _tips;
+    }
+
+
 
 
     // Future features to implement:
-    // - blacklist mapping
-    // - freeze mapping
-    // - modifiers: notBlacklisted, notFrozen
-    // - tip() function
     // - withdraw() function
     // - events: UserBlacklisted, UserFrozen, TipReceived, Withdraw
     // - receive() and fallback() functions
