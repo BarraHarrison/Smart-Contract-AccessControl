@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 // --- OpenZeppelin Imports ---
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title SecurityAccessControl
@@ -20,6 +20,37 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant BLACKLISTER_ROLE = keccak256("BLACKLISTER_ROLE");
     bytes32 public constant FREEZER_ROLE = keccak256("FREEZER_ROLE");
     bytes32 public constant FUNDER_ROLE = keccak256("FUNDER_ROLE");
+
+    // -------------------------
+    //   State
+    // -------------------------
+
+    // Blacklist + freeze state
+    mapping(address => bool) private _blacklisted;
+    mapping(address => bool) private _frozen;
+
+    // Tip storage
+    struct Tip {
+        address from;
+        uint256 amount;
+        string message;
+        uint256 timestamp;
+    }
+
+    Tip[] private _tips;
+
+    // -------------------------
+    //   Events
+    // -------------------------
+
+    event UserBlacklisted(address indexed account);
+    event UserRemovedFromBlacklist(address indexed account);
+    event UserFrozen(address indexed account);
+    event UserUnfrozen(address indexed account);
+
+    event TipReceived(address indexed from, uint256 amount, string message);
+    event Withdraw(address indexed to, uint256 amount);
+
 
     // -------------------------
     //   Constructor
