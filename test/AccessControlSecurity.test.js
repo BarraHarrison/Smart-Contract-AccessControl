@@ -244,3 +244,93 @@ describe("SecurityAccessControl – Blacklist System", function () {
         ).to.be.revertedWith("SecurityAccessControl: blacklisted");
     });
 });
+
+describe("SecurityAccessControl – Freeze System", function () {
+    let deployer, user1, user2;
+    let contract;
+
+    beforeEach(async function () {
+        [deployer, user1, user2] = await ethers.getSigners();
+
+        const Factory = await ethers.getContractFactory("SecurityAccessControl");
+        contract = await Factory.deploy();
+        await contract.waitForDeployment();
+    });
+
+    it("FREEZER_ROLE should be able to freeze an address", async function () {
+        await expect(contract.freeze(user1.address))
+            .to.emit(contract, "UserFrozen")
+            .withArgs(user1.address);
+
+        expect(await contract.isFrozen(user1.address)).to.equal(true);
+    });
+
+    it("FREEZER_ROLE should be able to unfreeze an address", async function () {
+        await contract.freeze(user1.address);
+
+        await expect(contract.unfreeze(user1.address))
+            .to.emit(contract, "UserUnfrozen")
+            .withArgs(user1.address);
+
+        expect(await contract.isFrozen(user1.address)).to.equal(false);
+    });
+
+    it("Non-FREEZER_ROLE should NOT be able to freeze", async function () {
+        const FREEZER_ROLE = await contract.FREEZER_ROLE();
+
+        await expect(
+            contract.connect(user1).freeze(user2.address)
+        )
+            .to.be.revertedWithCustomError(
+                contract,
+                "AccessControlUnauthorizedAccount"
+            )
+            .withArgs(user1.address, FREEZER_ROLE);
+    });
+
+    it("Non-FREEZER_ROLE should NOT be able to unfreeze", async function () {
+        const FREEZER_ROLE = await contract.FREEZER_ROLE();
+
+        await contract.freeze(user2.address);
+
+        await expect(
+            contract.connect(user1).unfreeze(user2.address)
+        )
+            .to.be.revertedWithCustomError(
+                contract,
+                "AccessControlUnauthorizedAccount"
+            )
+            .withArgs(user1.address, FREEZER_ROLE);
+    });
+
+    it("Frozen address should NOT be able to send tips", async function () {
+        await contract.freeze(user1.address);
+
+        await expect(
+            contract.connect(user1).sendTip("nope", { value: 1n })
+        ).to.be.revertedWith("SecurityAccessControl: frozen");
+    });
+
+    it("Frozen address should NOT be able to withdraw", async function () {
+        await deployer.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("1"),
+        });
+
+        await contract.freeze(deployer.address);
+
+        await expect(contract.withdraw())
+            .to.be.revertedWith("SecurityAccessControl: frozen");
+    });
+
+    it("Frozen address should NOT be able to send ETH directly (receive/fallback)", async function () {
+        await contract.freeze(user1.address);
+
+        await expect(
+            user1.sendTransaction({
+                to: await contract.getAddress(),
+                value: 1n,
+            })
+        ).to.be.revertedWith("SecurityAccessControl: frozen");
+    });
+});
