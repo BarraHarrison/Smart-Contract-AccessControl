@@ -168,22 +168,18 @@ describe("SecurityAccessControl – Blacklist System", function () {
     });
 
     it("BLACKLISTER_ROLE should be able to blacklist an address", async function () {
-        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
-
-        await expect(contract.blacklistAddress(user1.address))
-            .to.emit(contract, "Blacklisted")
+        await expect(contract.blacklist(user1.address))
+            .to.emit(contract, "UserBlacklisted")
             .withArgs(user1.address);
 
         expect(await contract.isBlacklisted(user1.address)).to.equal(true);
     });
 
     it("BLACKLISTER_ROLE should be able to remove an address from blacklist", async function () {
-        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
+        await contract.blacklist(user1.address);
 
-        await contract.blacklistAddress(user1.address);
-
-        await expect(contract.unblacklistAddress(user1.address))
-            .to.emit(contract, "Unblacklisted")
+        await expect(contract.removeFromBlacklist(user1.address))
+            .to.emit(contract, "UserRemovedFromBlacklist")
             .withArgs(user1.address);
 
         expect(await contract.isBlacklisted(user1.address)).to.equal(false);
@@ -193,7 +189,7 @@ describe("SecurityAccessControl – Blacklist System", function () {
         const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
 
         await expect(
-            contract.connect(user1).blacklistAddress(user2.address)
+            contract.connect(user1).blacklist(user2.address)
         )
             .to.be.revertedWithCustomError(
                 contract,
@@ -205,10 +201,10 @@ describe("SecurityAccessControl – Blacklist System", function () {
     it("Non-BLACKLISTER_ROLE should NOT be able to unblacklist", async function () {
         const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
 
-        await contract.blacklistAddress(user2.address);
+        await contract.blacklist(user2.address);
 
         await expect(
-            contract.connect(user1).unblacklistAddress(user2.address)
+            contract.connect(user1).removeFromBlacklist(user2.address)
         )
             .to.be.revertedWithCustomError(
                 contract,
@@ -218,7 +214,7 @@ describe("SecurityAccessControl – Blacklist System", function () {
     });
 
     it("Blacklisted address should NOT be able to send tips", async function () {
-        await contract.blacklistAddress(user1.address);
+        await contract.blacklist(user1.address);
 
         await expect(
             contract.connect(user1).sendTip("blocked", { value: 1n })
@@ -231,14 +227,14 @@ describe("SecurityAccessControl – Blacklist System", function () {
             value: ethers.parseEther("1"),
         });
 
-        await contract.blacklistAddress(deployer.address);
+        await contract.blacklist(deployer.address);
 
         await expect(contract.withdraw())
             .to.be.revertedWith("SecurityAccessControl: blacklisted");
     });
 
     it("Blacklisted address should NOT be able to send ETH directly (receive/fallback)", async function () {
-        await contract.blacklistAddress(user1.address);
+        await contract.blacklist(user1.address);
 
         await expect(
             user1.sendTransaction({
