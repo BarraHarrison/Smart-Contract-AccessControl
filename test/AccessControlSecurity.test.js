@@ -68,3 +68,83 @@ describe("SecurityAccessControl – Deployment & Roles", function () {
         ).withArgs(user1.address, DEFAULT_ADMIN_ROLE);
     });
 });
+
+describe("SecurityAccessControl – Pausing System", function () {
+    let deployer, user1;
+    let contract;
+
+    beforeEach(async function () {
+        [deployer, user1] = await ethers.getSigners();
+
+        const Factory = await ethers.getContractFactory("SecurityAccessControl");
+        contract = await Factory.deploy();
+        await contract.waitForDeployment();
+    });
+
+    it("Contract should start unpaused", async function () {
+        expect(await contract.paused()).to.equal(false);
+    });
+
+    it("PAUSER_ROLE should be able to pause", async function () {
+        await expect(contract.pause())
+            .to.emit(contract, "Paused")
+            .withArgs(deployer.address);
+
+        expect(await contract.paused()).to.equal(true);
+    });
+
+    it("PAUSER_ROLE should be able to unpause", async function () {
+        await contract.pause();
+
+        await expect(contract.unpause())
+            .to.emit(contract, "Unpaused")
+            .withArgs(deployer.address);
+
+        expect(await contract.paused()).to.equal(false);
+    });
+
+    it("Non-PAUSER_ROLE should NOT be able to pause", async function () {
+        const PAUSER_ROLE = await contract.PAUSER_ROLE();
+        await expect(
+            contract.connect(user1).pause()
+        )
+            .to.be.revertedWithCustomError(contract, "AccessControlUnauthorizedAccount")
+            .withArgs(user1.address, PAUSER_ROLE);
+    });
+
+    it("Non-PAUSER_ROLE should NOT be able to unpause", async function () {
+        const PAUSER_ROLE = await contract.PAUSER_ROLE();
+
+        await contract.pause();
+
+        await expect(
+            contract.connect(user1).unpause()
+        )
+            .to.be.revertedWithCustomError(contract, "AccessControlUnauthorizedAccount")
+            .withArgs(user1.address, PAUSER_ROLE);
+    });
+
+    it("Should block sendTip() while paused", async function () {
+        await contract.pause();
+
+        await expect(
+            contract.sendTip("hello", { value: 1n })
+        ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should block withdraw() while paused", async function () {
+        await contract.pause();
+        await expect(contract.withdraw()).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should block receive() while paused (ETH send)", async function () {
+        await contract.pause();
+
+        await expect(
+            deployer.sendTransaction({
+                to: await contract.getAddress(),
+                value: 1n,
+            })
+        ).to.be.revertedWith("Pausable: paused");
+    });
+});
