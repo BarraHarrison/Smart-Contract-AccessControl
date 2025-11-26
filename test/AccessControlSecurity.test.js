@@ -154,3 +154,97 @@ describe("SecurityAccessControl – Pausing System", function () {
         ).to.be.revertedWithCustomError(contract, "EnforcedPause");
     });
 });
+
+describe("SecurityAccessControl – Blacklist System", function () {
+    let deployer, user1, user2;
+    let contract;
+
+    beforeEach(async function () {
+        [deployer, user1, user2] = await ethers.getSigners();
+
+        const Factory = await ethers.getContractFactory("SecurityAccessControl");
+        contract = await Factory.deploy();
+        await contract.waitForDeployment();
+    });
+
+    it("BLACKLISTER_ROLE should be able to blacklist an address", async function () {
+        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
+
+        await expect(contract.blacklistAddress(user1.address))
+            .to.emit(contract, "Blacklisted")
+            .withArgs(user1.address);
+
+        expect(await contract.isBlacklisted(user1.address)).to.equal(true);
+    });
+
+    it("BLACKLISTER_ROLE should be able to remove an address from blacklist", async function () {
+        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
+
+        await contract.blacklistAddress(user1.address);
+
+        await expect(contract.unblacklistAddress(user1.address))
+            .to.emit(contract, "Unblacklisted")
+            .withArgs(user1.address);
+
+        expect(await contract.isBlacklisted(user1.address)).to.equal(false);
+    });
+
+    it("Non-BLACKLISTER_ROLE should NOT be able to blacklist", async function () {
+        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
+
+        await expect(
+            contract.connect(user1).blacklistAddress(user2.address)
+        )
+            .to.be.revertedWithCustomError(
+                contract,
+                "AccessControlUnauthorizedAccount"
+            )
+            .withArgs(user1.address, BLACKLISTER_ROLE);
+    });
+
+    it("Non-BLACKLISTER_ROLE should NOT be able to unblacklist", async function () {
+        const BLACKLISTER_ROLE = await contract.BLACKLISTER_ROLE();
+
+        await contract.blacklistAddress(user2.address);
+
+        await expect(
+            contract.connect(user1).unblacklistAddress(user2.address)
+        )
+            .to.be.revertedWithCustomError(
+                contract,
+                "AccessControlUnauthorizedAccount"
+            )
+            .withArgs(user1.address, BLACKLISTER_ROLE);
+    });
+
+    it("Blacklisted address should NOT be able to send tips", async function () {
+        await contract.blacklistAddress(user1.address);
+
+        await expect(
+            contract.connect(user1).sendTip("blocked", { value: 1n })
+        ).to.be.revertedWith("SecurityAccessControl: blacklisted");
+    });
+
+    it("Blacklisted address should NOT be able to withdraw", async function () {
+        await deployer.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("1"),
+        });
+
+        await contract.blacklistAddress(deployer.address);
+
+        await expect(contract.withdraw())
+            .to.be.revertedWith("SecurityAccessControl: blacklisted");
+    });
+
+    it("Blacklisted address should NOT be able to send ETH directly (receive/fallback)", async function () {
+        await contract.blacklistAddress(user1.address);
+
+        await expect(
+            user1.sendTransaction({
+                to: await contract.getAddress(),
+                value: 1n,
+            })
+        ).to.be.revertedWith("SecurityAccessControl: blacklisted");
+    });
+});
