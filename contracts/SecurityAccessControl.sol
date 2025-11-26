@@ -195,18 +195,16 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
         notBlacklisted(msg.sender)
         notFrozen(msg.sender)
     {
-        if (msg.value > 0) {
-            _tips.push(
-                Tip({
-                    from: msg.sender,
-                    amount: msg.value,
-                    message: "",
-                    timestamp: block.timestamp
-                })
-            );
+        _tips.push(
+        Tip({
+            from: msg.sender,
+            amount: msg.value,
+            message: "",
+            timestamp: block.timestamp
+        })
+    );
 
-            emit TipReceived(msg.sender, msg.value, "");
-        }
+    emit TipReceived(msg.sender, msg.value, "");
     }
 }
 
