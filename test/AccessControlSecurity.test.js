@@ -404,3 +404,113 @@ describe("SecurityAccessControl – Tip Storage", function () {
         expect(tip.timestamp).to.be.gt(0);
     });
 });
+
+describe("SecurityAccessControl – Withdraw System", function () {
+    let deployer, funder, user1;
+    let contract;
+
+    beforeEach(async function () {
+        [deployer, funder, user1] = await ethers.getSigners();
+
+        const Factory = await ethers.getContractFactory("SecurityAccessControl");
+        contract = await Factory.deploy();
+        await contract.waitForDeployment();
+
+        await contract.grantRole(
+            await contract.FUNDER_ROLE(),
+            funder.address
+        );
+    });
+
+    it("FUNDER_ROLE should be able to withdraw contract balance", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("1"),
+        });
+
+        const before = await ethers.provider.getBalance(funder.address);
+
+        const tx = await contract.connect(funder).withdraw();
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+
+        const after = await ethers.provider.getBalance(funder.address);
+
+        expect(after + gasUsed).to.be.closeTo(
+            before + ethers.parseEther("1"),
+            ethers.parseEther("0.0000001")
+        );
+    });
+
+    it("Non-FUNDER_ROLE should NOT be able to withdraw", async function () {
+        await expect(
+            contract.connect(user1).withdraw()
+        ).to.be.revertedWithCustomError(
+            contract,
+            "AccessControlUnauthorizedAccount"
+        );
+    });
+
+    it("Should revert withdraw() when contract balance is zero", async function () {
+        await expect(
+            contract.connect(funder).withdraw()
+        ).to.be.revertedWith("SecurityAccessControl: no funds to withdraw");
+    });
+
+    it("Blacklisted FUNDER should NOT be able to withdraw", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("0.5"),
+        });
+
+        await contract.connect(deployer).blacklist(funder.address);
+
+        await expect(
+            contract.connect(funder).withdraw()
+        ).to.be.revertedWith("SecurityAccessControl: blacklisted");
+    });
+
+    it("Frozen FUNDER should NOT be able to withdraw", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("0.5"),
+        });
+
+        await contract.connect(deployer).freeze(funder.address);
+
+        await expect(
+            contract.connect(funder).withdraw()
+        ).to.be.revertedWith("SecurityAccessControl: frozen");
+    });
+
+    it("Should block withdraw() while paused", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("0.25"),
+        });
+
+        await contract.pause();
+
+        await expect(
+            contract.connect(funder).withdraw()
+        ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should protect withdraw() from reentrancy attack", async function () {
+        const AttackerFactory = await ethers.getContractFactory("ReentrancyAttacker");
+        const attacker = await AttackerFactory.deploy(contract.getAddress());
+        await attacker.waitForDeployment();
+
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("1"),
+        });
+
+        await contract.grantRole(
+            await contract.FUNDER_ROLE(),
+            attacker.getAddress()
+        );
+
+        await expect(attacker.attack()).to.be.reverted;
+    });
+});
