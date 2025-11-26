@@ -334,3 +334,73 @@ describe("SecurityAccessControl – Freeze System", function () {
         ).to.be.revertedWith("SecurityAccessControl: frozen");
     });
 });
+
+describe("SecurityAccessControl – Tip Storage", function () {
+    let deployer, user1;
+    let contract;
+
+    beforeEach(async function () {
+        [deployer, user1] = await ethers.getSigners();
+
+        const Factory = await ethers.getContractFactory("SecurityAccessControl");
+        contract = await Factory.deploy();
+        await contract.waitForDeployment();
+    });
+
+    it("Should store a tip correctly via sendTip()", async function () {
+        const tx = await contract
+            .connect(user1)
+            .sendTip("Hello world!", { value: ethers.parseEther("0.1") });
+
+        await tx.wait();
+
+        const tips = await contract.getAllTips();
+        expect(tips.length).to.equal(1);
+
+        const tip = tips[0];
+
+        expect(tip.from).to.equal(user1.address);
+        expect(tip.amount).to.equal(ethers.parseEther("0.1"));
+        expect(tip.message).to.equal("Hello world!");
+        expect(tip.timestamp).to.be.gt(0);
+    });
+
+    it("Should revert sendTip() if no ETH is sent", async function () {
+        await expect(
+            contract.connect(user1).sendTip("No ETH")
+        ).to.be.revertedWith("SecurityAccessControl: no ETH sent");
+    });
+
+    it("Should store a tip with empty message via receive()", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("0.05"),
+        });
+
+        const tips = await contract.getAllTips();
+        expect(tips.length).to.equal(1);
+
+        const tip = tips[0];
+        expect(tip.from).to.equal(user1.address);
+        expect(tip.amount).to.equal(ethers.parseEther("0.05"));
+        expect(tip.message).to.equal("");
+        expect(tip.timestamp).to.be.gt(0);
+    });
+
+    it("Should store a tip with empty message via fallback() (random calldata)", async function () {
+        await user1.sendTransaction({
+            to: await contract.getAddress(),
+            value: ethers.parseEther("0.02"),
+            data: "0x1234",
+        });
+
+        const tips = await contract.getAllTips();
+        expect(tips.length).to.equal(1);
+
+        const tip = tips[0];
+        expect(tip.from).to.equal(user1.address);
+        expect(tip.amount).to.equal(ethers.parseEther("0.02"));
+        expect(tip.message).to.equal("");
+        expect(tip.timestamp).to.be.gt(0);
+    });
+});
