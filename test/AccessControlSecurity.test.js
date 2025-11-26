@@ -129,13 +129,19 @@ describe("SecurityAccessControl – Pausing System", function () {
 
         await expect(
             contract.sendTip("hello", { value: 1n })
-        ).to.be.revertedWith("Pausable: paused");
+        ).to.be.revertedWithCustomError(contract, "EnforcedPause");
     });
+
 
     it("Should block withdraw() while paused", async function () {
         await contract.pause();
-        await expect(contract.withdraw()).to.be.revertedWith("Pausable: paused");
+
+        await expect(contract.withdraw()).to.be.revertedWithCustomError(
+            contract,
+            "EnforcedPause"
+        );
     });
+
 
     it("Should block receive() while paused (ETH send)", async function () {
         await contract.pause();
@@ -145,6 +151,6 @@ describe("SecurityAccessControl – Pausing System", function () {
                 to: await contract.getAddress(),
                 value: 1n,
             })
-        ).to.be.revertedWith("Pausable: paused");
+        ).to.be.revertedWithCustomError(contract, "EnforcedPause");
     });
 });
