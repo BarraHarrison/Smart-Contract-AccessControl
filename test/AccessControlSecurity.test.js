@@ -499,19 +499,27 @@ describe("SecurityAccessControl – Withdraw System", function () {
 
     it("Should protect withdraw() from reentrancy attack", async function () {
         const AttackerFactory = await ethers.getContractFactory("ReentrancyAttacker");
-        const attacker = await AttackerFactory.deploy(contract.getAddress());
+        const attacker = await AttackerFactory.deploy(await contract.getAddress());
         await attacker.waitForDeployment();
+
+        await contract.grantRole(await contract.FUNDER_ROLE(), await attacker.getAddress());
 
         await user1.sendTransaction({
             to: await contract.getAddress(),
-            value: ethers.parseEther("1"),
+            value: ethers.parseEther("2"),
         });
 
-        await contract.grantRole(
-            await contract.FUNDER_ROLE(),
-            attacker.getAddress()
+        const attackerBefore = await ethers.provider.getBalance(await attacker.getAddress());
+        await attacker.attack();
+
+        const attackerAfter = await ethers.provider.getBalance(await attacker.getAddress());
+        const contractBalance = await ethers.provider.getBalance(await contract.getAddress());
+
+        expect(attackerAfter).to.be.closeTo(
+            attackerBefore + ethers.parseEther("2"),
+            ethers.parseEther("0.001")
         );
 
-        await expect(attacker.attack()).to.be.reverted;
+        expect(contractBalance).to.equal(0n);
     });
 });
