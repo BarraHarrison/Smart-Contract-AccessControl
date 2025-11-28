@@ -498,7 +498,7 @@ describe("SecurityAccessControl – Withdraw System", function () {
 
         await expect(
             contract.connect(funder).withdraw()
-        ).to.be.revertedWith("Pausable: paused");
+        ).to.be.revertedWithCustomError(contract, "EnforcedPause");
     });
 
     it("Should protect withdraw() from reentrancy attack", async function () {
