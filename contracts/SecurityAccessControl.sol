@@ -147,8 +147,8 @@ contract SecurityAccessControl is AccessControl, Pausable, ReentrancyGuard {
      */
     function withdraw()
         external
-        nonReentrant
         whenNotPaused
+        nonReentrant
         onlyRole(FUNDER_ROLE)
         notBlacklisted(msg.sender)
         notFrozen(msg.sender)
