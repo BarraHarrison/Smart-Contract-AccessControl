@@ -489,7 +489,11 @@ describe("SecurityAccessControl – Withdraw System", function () {
             value: ethers.parseEther("0.25"),
         });
 
-        await contract.grantRole(await contract.FUNDER_ROLE(), funder.address);
+        await contract.connect(deployer).grantRole(
+            await contract.FUNDER_ROLE(),
+            funder.address
+        );
+
         await contract.pause();
 
         await expect(
