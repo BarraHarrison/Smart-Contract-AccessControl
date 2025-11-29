@@ -1,4 +1,5 @@
-import { ethers } from "hardhat";
+import hardhat from "hardhat";
+const { ethers } = hardhat;
 
 async function main() {
     console.log("==============================================");
@@ -6,7 +7,6 @@ async function main() {
     console.log("==============================================");
 
     const [deployer] = await ethers.getSigners();
-
     console.log(`📌 Deployer Address: ${deployer.address}`);
     console.log("----------------------------------------------");
 
